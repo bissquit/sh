@@ -1,11 +1,11 @@
 #!/bin/bash
 #=========================================================================
-#         FILE: basic_template_V1.2.0.sh
+#         FILE: proxmox_install_V1.2.0.sh
 #
-#        USAGE:
+#        USAGE: ./proxmox_install_V1.2.0.sh
 #
-#  DESCRIPTION: contain several function for formatting output and analize
-#               exit code of certain single commands (if needed)
+#  DESCRIPTION: Proxmox installation. Script has optimized for Hetzner's
+#               servers.
 #
 #        NOTES: do not use as single script; this is only a template
 #       AUTHOR: E.S.Vasilyev - bq@bissquit.com; e.s.vasilyev@mail.ru
@@ -21,7 +21,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 log_file_name=$( sed 's/^\.\///' <<< $BASH_SOURCE.log ) # log file name
 admin_email="bq@bissquit.com"			# admin's e-mails; use comma to separate addresses
-time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:" 	# time format
+time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:"	# time format
 need_to_be_root=1				# need to be root? 1 - Yes, 0 - No
 
 #=========================================================================
@@ -44,7 +44,7 @@ function check_package {
 		apt-get update 2>> ${log_file_name} 1> /dev/null
 		echo $(time_format) "$1 installation" >> ${log_file_name}
 		apt-get install -q -y $1 2>> ${log_file_name} 1> /dev/null
-	else 
+	else
 		echo $(time_format) "$1 has been installed" >> ${log_file_name}
 	fi
 }
@@ -66,7 +66,7 @@ function execute_command {
 			echo $(time_format) "$1 - Error!!! Full command for debug: $2" >> ${log_file_name}
 			mail -s "ERROR!!! `hostname -f` - $BASH_SOURCE" ${admin_email} < ${log_file_name}
 			exit
-		else
+		else 
 			echo $(time_format) "Previous command has returned error, but need to continue script execution" >> ${log_file_name}
 		fi
 	else
@@ -97,12 +97,74 @@ run_by_root
 # some task-dependent variables and functions
 #-------------------------------------------------------------------------
 
+# https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_Stretch
 
+proxmox_hostname="proxmox-host"
+iso_storage_path="/root/iso"
+firewall_script_path="./firewall_proxmox.sh"
 
+#hostname
+echo $(time_format) "Change hostname to $proxmox_hostname" >> ${log_file_name}
+echo "$proxmox_hostname" > /etc/hostname
 
+#redefine /etc/hosts
+echo $(time_format) "Redefine /etc/hosts" >> ${log_file_name}
+echo "127.0.0.1 localhost.localdomain localhost" > /etc/hosts-tmp
+echo "$(hostname -I | cut -d' ' -f 1) proxmox-host" >> /etc/hosts-tmp
+echo "" >> /etc/hosts-tmp
+grep ip6 /etc/hosts >> /etc/hosts-tmp
+cat /etc/hosts-tmp > /etc/hosts
+rm /etc/hosts-tmp
 
+#add repo
+echo "deb http://download.proxmox.com/debian/pve stretch pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
+wget http://download.proxmox.com/debian/proxmox-ve-release-5.x.gpg -O /etc/apt/trusted.gpg.d/proxmox-ve-release-5.x.gpg
 
-#-------------------------------------------------------------------------
-# script finished
-#-------------------------------------------------------------------------
-mail -s "${time_format} 123" ${admin_email} < ${log_file_name}
+#configuring
+echo "postfix postfix/main_mailer_type string Internet site" > postfix_silent_install.txt
+echo "postfix postfix/mailname string localhost.localdomain" >> postfix_silent_install.txt
+echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" > iptables-persistent_silent_install.txt
+echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" >> iptables-persistent_silent_install.txt
+debconf-set-selections postfix_silent_install.txt
+debconf-set-selections iptables-persistent_silent_install.txt
+
+#install
+execute_command "Repo update" "apt-get update"
+execute_command "Package update" "apt-get dist-upgrade -y"
+DEBIAN_FRONTEND=noninteractive
+execute_command "Proxmox installation" "apt-get install -y proxmox-ve postfix open-iscsi"
+
+#bridge configuring
+echo $(time_format) "Bridge configure" >> ${log_file_name}
+cat /etc/network/interfaces > /etc/network/interfaces.backup
+sed -i 's/enp3s0/vmbr0/' /etc/network/interfaces
+sed -i 's/allow-hotplug vmbr0/auto vmbr0\nallow-hotplug vmbr0/' /etc/network/interfaces
+sed -i '/iface vmbr0 inet dhcp/ a\  bridge_ports enp3s0' /etc/network/interfaces
+echo "" >> /etc/network/interfaces
+echo "auto enp3s0" >> /etc/network/interfaces
+echo "allow-hotplug enp3s0" >> /etc/network/interfaces
+echo "iface enp3s0 inet manual" >> /etc/network/interfaces
+
+#create local iso storage
+# https://pve.proxmox.com/wiki/Storage
+echo $(time_format) "Configuring local iso storage" >> ${log_file_name}
+mkdir ${iso_storage_path}
+execute_command "Configure iso storage" "pvesm add dir iso --path ${iso_storage_path} --content iso" "1"
+echo $(time_format) "INFO: Put your iso images in ${iso_storage_path}/template/iso" >> ${log_file_name}
+
+#iptables definition
+check_package "iptables-persistent"
+if [ -f "$firewall_script_path" ] ; then
+	echo $(time_format) "Configure firewall rules" >> ${log_file_name}
+	bash $firewall_script_path 2>> ${log_file_name}
+	iptables-save > /etc/iptables/rules.v4 2>> ${log_file_name}
+	ip6tables-save > /etc/iptables/rules.v6 2>> ${log_file_name}
+	echo $(time_format) "Iptables configuring has finished. Done..." >> ${log_file_name}
+else
+	echo $(time_format) "WARNING!!! Firewall script is missing. Any rules does not apply" >> ${log_file_name}
+fi
+
+#-------------script finished-------------
+echo $(time_format) "$BASH_SOURCE has finished work. Reboot..." >> ${log_file_name}
+mail -s $(time_format) "123" ${admin_email} < ${log_file_name}
+reboot

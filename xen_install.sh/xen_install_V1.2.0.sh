@@ -1,13 +1,12 @@
 #!/bin/bash
 #=========================================================================
-#         FILE: basic_template_V1.2.0.sh
+#         FILE: xen_install_V1.2.0.sh
 #
-#        USAGE:
+#        USAGE: ./xen_install_V1.2.0.sh
 #
-#  DESCRIPTION: contain several function for formatting output and analize
-#               exit code of certain single commands (if needed)
+#  DESCRIPTION: perform Xen installation. Script has optimized for Hetzner
 #
-#        NOTES: do not use as single script; this is only a template
+#        NOTES:
 #       AUTHOR: E.S.Vasilyev - bq@bissquit.com; e.s.vasilyev@mail.ru
 #      VERSION: 1.2.0
 #      CREATED: 18.10.2017
@@ -21,7 +20,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 log_file_name=$( sed 's/^\.\///' <<< $BASH_SOURCE.log ) # log file name
 admin_email="bq@bissquit.com"			# admin's e-mails; use comma to separate addresses
-time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:" 	# time format
+time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:"	# time format
 need_to_be_root=1				# need to be root? 1 - Yes, 0 - No
 
 #=========================================================================
@@ -44,7 +43,7 @@ function check_package {
 		apt-get update 2>> ${log_file_name} 1> /dev/null
 		echo $(time_format) "$1 installation" >> ${log_file_name}
 		apt-get install -q -y $1 2>> ${log_file_name} 1> /dev/null
-	else 
+	else
 		echo $(time_format) "$1 has been installed" >> ${log_file_name}
 	fi
 }
@@ -88,21 +87,49 @@ function run_by_root {
 }
 
 #-------------------------------------------------------------------------
-# script start
+#
 #-------------------------------------------------------------------------
-echo "${time_format} $BASH_SOURCE starting work" >> ${log_file_name}
-run_by_root
 
 #-------------------------------------------------------------------------
 # some task-dependent variables and functions
 #-------------------------------------------------------------------------
 
-
-
-
-
-
 #-------------------------------------------------------------------------
-# script finished
+# script start
 #-------------------------------------------------------------------------
-mail -s "${time_format} 123" ${admin_email} < ${log_file_name}
+echo "${time_format} $BASH_SOURCE starting work" >> ${log_file_name}
+run_by_root
+
+#--
+echo "${time_format} Check hardware virtualization support"
+if [ 0 -eq "$( egrep '(vmx|svm)' /proc/cpuinfo | wc -l )" ] ; then
+	echo "${time_format} Warning!!! This server haven't hardware virtualization support" >> ${log_file_name}
+fi
+
+#--
+echo "${time_format} Info! This script has optimized for configuring Hetzner's default Debian installation" >> ${log_file_name}
+
+#--
+execute_command "Install XEN" "apt-get -q -y install xen-linux-system-amd64 xen-tools"
+execute_command "Configure GRUB" "dpkg-divert --divert /etc/grub.d/08_linux_xen --rename /etc/grub.d/20_linux_xen"
+execute_command "Update GRUB" "update-grub"
+echo "${time_format} Warning! Reboot needed!" >> ${log_file_name}
+echo "${time_format} Xen installation has finished. Done..." >> ${log_file_name}
+
+#--
+echo "${time_format} Network configure starting..." >> ${log_file_name}
+execute_command "Backup network settings" "mv /etc/network/interfaces /etc/network/interfaces.backup"
+echo "${time_format} Configuring /etc/network/interfaces" >> ${log_file_name}
+cat /etc/network/interfaces.backup > /etc/network/interfaces
+sed -i 's/eth0/xenbr0/' /etc/network/interfaces
+sed -i '/iface xenbr0 inet static/ a\  bridge_ports eth0' /etc/network/interfaces
+echo "" >> /etc/network/interfaces
+echo "auto eth0" >> /etc/network/interfaces
+echo "iface eth0 inet manual" >> /etc/network/interfaces
+echo "${time_format} Network configuring has finished. Done..." >> ${log_file_name}
+
+#--
+echo "${time_format} $BASH_SOURCE has finished work. Reboot..." >> ${log_file_name}
+
+#--
+reboot

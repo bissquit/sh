@@ -8,7 +8,7 @@
 #               exit code of certain single commands (if needed)
 #
 #        NOTES: do not use as single script; this is only a template
-#       AUTHOR: E.S.Vasilyev
+#       AUTHOR: E.S.Vasilyev - bq@bissquit.com; e.s.vasilyev@mail.ru
 #      VERSION: 1.2.0
 #      CREATED: 18.10.2017
 #=========================================================================

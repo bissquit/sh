@@ -1,8 +1,8 @@
 #!/bin/bash
 #=========================================================================
-#         FILE: proxmox_install_V1.2.0.sh
+#         FILE: proxmox_install_V1.3.0.sh
 #
-#        USAGE: ./proxmox_install_V1.2.0.sh [ hostname ]
+#        USAGE: ./proxmox_install_V1.3.0.sh [ hostname ]
 #
 #  DESCRIPTION: Proxmox installation. Script has optimized for Hetzner's
 #               servers with single network interface.
@@ -10,7 +10,7 @@
 #        NOTES: do not use as single script; this is only a template
 #       AUTHOR: E.S.Vasilyev - bq@bissquit.com; e.s.vasilyev@mail.ru
 #      VERSION: 1.3.0
-#      CREATED: 18.10.2017
+#      CREATED: 27.10.2017
 #=========================================================================
 
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -20,13 +20,13 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 #-------------------------------------------------------------------------
 
 log_file_name=$( sed 's/^\.\///' <<< $BASH_SOURCE.log ) # log file name
-admin_email="bq@bissquit.com"					# admin's e-mails; use comma to separate addresses
+admin_email="bq@bissquit.com"			# admin's e-mails; use comma to separate addresses
 time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:"	# time format
-need_to_be_root=1								# need to be root? 1 - Yes, 0 - No
+need_to_be_root=1				# need to be root? 1 - Yes, 0 - No
 
 #=========================================================================
 #  DESCRIPTION: display time in certain ouput format
-#				e.d. [2017/10/19 11:02:39]:
+#		e.d. [2017/10/19 11:02:39]:
 #=========================================================================
 function time_format {
 	echo "[`date +"%Y/%m/%d %H:%M:%S"`]:"
@@ -76,7 +76,7 @@ function execute_command {
 
 #=========================================================================
 #  DESCRIPTION: check root permissions
-#  need to set ${need_to_be_root}
+#		need to set ${need_to_be_root}
 #=========================================================================
 function run_by_root {
 	if [ 0 -ne "$( id -u )" -a 1 -eq "${need_to_be_root}" ] ; then
@@ -98,8 +98,8 @@ run_by_root
 
 # https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_Stretch
 
-proxmox_hostname="$1"							# set new hostname
-iso_storage_path="/var/iso"					# path for iso image storage
+proxmox_hostname="$1"				# set new hostname
+iso_storage_path="/var/iso"			# path for iso image storage
 firewall_script_path="./firewall_proxmox.sh"	# path to optional iptables script
 if_name=$( sed -r '/auto [^lo]/!d;s/auto (.*)/\1/' /etc/network/interfaces ) # get interface name
 

@@ -20,9 +20,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 #-------------------------------------------------------------------------
 
 log_file_name=$( sed 's/^\.\///' <<< $BASH_SOURCE.log ) # log file name
-admin_email="bq@bissquit.com"				# admin's e-mails; use comma to separate addresses
-time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:"		# time format
-need_to_be_root=1					# need to be root? 1 - Yes, 0 - No
+admin_email="bq@bissquit.com"					# admin's e-mails; use comma to separate addresses
+time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:"	# time format
+need_to_be_root=1								# need to be root? 1 - Yes, 0 - No
 
 #=========================================================================
 #  DESCRIPTION: display time in certain ouput format
@@ -98,8 +98,8 @@ run_by_root
 
 # https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_Stretch
 
-proxmox_hostname="$1"				# set new hostname
-iso_storage_path="/root/iso"			# path for iso image storage
+proxmox_hostname="$1"							# set new hostname
+iso_storage_path="/var/iso"					# path for iso image storage
 firewall_script_path="./firewall_proxmox.sh"	# path to optional iptables script
 if_name=$( sed -r '/auto [^lo]/!d;s/auto (.*)/\1/' /etc/network/interfaces ) # get interface name
 
@@ -111,14 +111,6 @@ echo $(time_format) "Change hostname to $proxmox_hostname" >> $log_file_name
 sed -i 's/'"$(hostname)"'/'"$proxmox_hostname"'/' /etc/hosts
 echo "$proxmox_hostname" > /etc/hostname
 execute_command "Run hostnamectl" "hostnamectl set-hostname $proxmox_hostname"
-
-#echo $(time_format) "Redefine /etc/hosts" >> ${log_file_name}
-#echo "127.0.0.1 localhost.localdomain localhost" > /etc/hosts-tmp
-#echo "$(hostname -I | cut -d' ' -f 1) $proxmox_hostname" >> /etc/hosts-tmp
-#echo "" >> /etc/hosts-tmp
-#grep ip6 /etc/hosts >> /etc/hosts-tmp
-#cat /etc/hosts-tmp > /etc/hosts
-#rm /etc/hosts-tmp
 
 #-------------------------------------------------------------------------
 # add repo
@@ -151,7 +143,6 @@ execute_command "Proxmox installation" "apt-get install -y proxmox-ve postfix op
 echo $(time_format) "Bridge configure" >> $log_file_name
 cat /etc/network/interfaces > /etc/network/interfaces.backup
 sed -i 's/'"$if_name"'/vmbr0/' /etc/network/interfaces
-#sed -i 's/allow-hotplug vmbr0/auto vmbr0\nallow-hotplug vmbr0/' /etc/network/interfaces
 sed -i 's/auto vmbr0/auto vmbr0\nallow-hotplug vmbr0/' /etc/network/interfaces
 sed -i '/iface vmbr0 inet.*/ a\  bridge_ports '"$if_name"'' /etc/network/interfaces
 echo "" >> /etc/network/interfaces
@@ -162,6 +153,7 @@ echo "iface $if_name inet manual" >> /etc/network/interfaces
 #-------------------------------------------------------------------------
 # create local iso storage
 # https://pve.proxmox.com/wiki/Storage
+# https://pve.proxmox.com/pve-docs/pvesm.1.html
 #-------------------------------------------------------------------------
 echo $(time_format) "Configuring local iso storage" >> $log_file_name
 mkdir "$iso_storage_path"
@@ -183,7 +175,9 @@ else
 	echo $(time_format) "WARNING!!! Firewall script is missing. Any rules does not apply" >> $log_file_name
 fi
 
-#-------------script finished-------------
+#-------------------------------------------------------------------------
+# script finished
+#-------------------------------------------------------------------------
 echo $(time_format) "$BASH_SOURCE has finished work. Reboot..." >> $log_file_name
 mail -s $(time_format) "123" "$admin_email" < $log_file_name
 reboot

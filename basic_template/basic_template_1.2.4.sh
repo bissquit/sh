@@ -1,6 +1,6 @@
 #!/bin/bash
 #=========================================================================
-#         FILE: basic_template_V1.2.3.sh
+#         FILE: basic_template_1.2.4.sh
 #
 #        USAGE: 
 #
@@ -9,8 +9,8 @@
 #
 #        NOTES: do not use as single script; this is only a template
 #       AUTHOR: E.S.Vasilyev - bq@bissquit.com; e.s.vasilyev@mail.ru
-#      VERSION: 1.2.2
-#      CREATED: 25.10.2017
+#      VERSION: 1.2.4
+#      CREATED: 30.10.2017
 #=========================================================================
 
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -21,15 +21,14 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 log_file_name=$( sed 's/^\.\///' <<< $BASH_SOURCE.log ) # log file name
 admin_email="bq@bissquit.com"				# admin's e-mails; use comma to separate addresses
-time_format="[`date +"%Y/%m/%d %H:%M:%S"`]:"		# time format
 need_to_be_root=1					# need to be root? 1 - Yes, 0 - No
 
 #=========================================================================
 #  DESCRIPTION: display time in certain ouput format
-#				e.d. [2017/10/19 11:02:39]:
+#		e.d. [2017/10/19 11:02:39]:
 #=========================================================================
 function time_format {
-	echo "[`date +"%Y/%m/%d %H:%M:%S"`]:"
+	printf '%s' "[$(date +"%Y/%m/%d %H:%M:%S")]:"
 }
 
 #=========================================================================
@@ -37,15 +36,15 @@ function time_format {
 #  PARAMETER 1: package name (e.g. nano)
 #=========================================================================
 function check_package {
-	if [ 0 -eq "$( dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -c "install ok installed" )" ] ; then
-		echo $(time_format) "$1 has not installed. Installation starts after 10 second!" >> $log_file_name
+	if [ 0 -eq "$( dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -c "install ok installed" )" ]; then
+		echo $(time_format) "$1 has not installed. Installation starts after 10 second!" >> "$log_file_name"
 		sleep 10
-		echo $(time_format) "Execute apt-get update" >> $log_file_name
-		apt-get update >> $log_file_name
-		echo $(time_format) "$1 installation" >> $log_file_name
-		apt-get install -q -y $1 >> $log_file_name
+		echo $(time_format) "Execute apt-get update" >> "$log_file_name"
+		apt-get update >> "$log_file_name"
+		echo $(time_format) "$1 installation" >> "$log_file_name"
+		apt-get install -q -y "$1" >> "$log_file_name"
 	else
-		echo $(time_format) "$1 has been installed" >> $log_file_name
+		echo $(time_format) "$1 has been installed" >> "$log_file_name"
 	fi
 }
 
@@ -59,18 +58,18 @@ check_package "mailutils"
 #=========================================================================
 function execute_command {
     #execute command
-    $2 >> $log_file_name
+    $2 >> "$log_file_name"
     #check exit code
-    if [ 0 -ne $? ] ; then
-		if [ -z $3 ] ; then
-			echo $(time_format) "$1 - Error!!! Full command for debug: $2" >> $log_file_name
-			mail -s "ERROR!!! $(hostname -f) - $BASH_SOURCE" "$admin_email" < $log_file_name
+    if [ 0 -ne "$?" ]; then
+		if [ -z "$3" ]; then
+			echo $(time_format) "$1 - Error!!! Full command for debug: $2" >> "$log_file_name"
+			mail -s "ERROR!!! $(hostname -f) - $BASH_SOURCE" "$admin_email" < "$log_file_name"
 			exit
 		else
-			echo $(time_format) "Previous command has returned error, but need to continue script execution" >> $log_file_name
+			echo $(time_format) "Previous command has returned error, but need to continue script execution" >> "$log_file_name"
 		fi
 	else
-		echo $(time_format) "$1 - Success" >> $log_file_name
+		echo $(time_format) "$1 - Success" >> "$log_file_name"
 	fi
 }
 
@@ -79,9 +78,9 @@ function execute_command {
 #  need to set ${need_to_be_root}
 #=========================================================================
 function run_by_root {
-	if [ 0 -ne "$( id -u )" -a 1 -eq "${need_to_be_root}" ] ; then
-		echo $(time_format) "Need to be root. Exit..." >> $log_file_name
-		mail -s "Need to be root! $(hostname -f) - $BASH_SOURCE" "$admin_email" < $log_file_name
+	if [ 0 -ne "$( id -u )" -a 1 -eq "${need_to_be_root}" ]; then
+		echo $(time_format) "Need to be root. Exit..." >> "$log_file_name"
+		mail -s "Need to be root! $(hostname -f) - $BASH_SOURCE" "$admin_email" < "$log_file_name"
 		exit
 	fi
 }
@@ -89,7 +88,7 @@ function run_by_root {
 #-------------------------------------------------------------------------
 # script start
 #-------------------------------------------------------------------------
-echo "$(time_format) $BASH_SOURCE starting work" >> $log_file_name
+echo "$(time_format) $BASH_SOURCE starting work" >> "$log_file_name"
 run_by_root
 
 #-------------------------------------------------------------------------
@@ -104,4 +103,4 @@ run_by_root
 #-------------------------------------------------------------------------
 # script finished
 #-------------------------------------------------------------------------
-mail -s "$(time_format) 123" "$admin_email" < $log_file_name
+mail -s "$(time_format) 123" "$admin_email" < "$log_file_name"

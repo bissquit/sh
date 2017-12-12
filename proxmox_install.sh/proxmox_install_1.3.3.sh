@@ -1,16 +1,16 @@
 #!/bin/bash
 #=========================================================================
-#         FILE: proxmox_install_1.3.2.sh
+#         FILE: proxmox_install_1.3.3.sh
 #
-#        USAGE: ./proxmox_install_1.3.2.sh [ preffered hostname ]
+#        USAGE: ./proxmox_install_1.3.3.sh [ preffered hostname ]
 #
 #  DESCRIPTION: Proxmox installation. Script has optimized for Hetzner's
 #               servers with single network interface.
 #
 #        NOTES: 
 #       AUTHOR: E.S.Vasilyev - bq@bissquit.com; e.s.vasilyev@mail.ru
-#      VERSION: 1.3.1
-#      CREATED: 01.11.2017
+#      VERSION: 1.3.3
+#      CREATED: 03.11.2017
 #=========================================================================
 
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -57,10 +57,10 @@ check_package "mailutils"
 #  PARAMETER 3: set 1 to ignore error exit code
 #=========================================================================
 function execute_command {
-    #execute command
-    $2 >> "$log_file_name"
-    #check exit code
-    if [ 0 -ne "$?" ]; then
+	#execute command
+	$2 >> "$log_file_name"
+	#check exit code
+	if [ 0 -ne "$?" ]; then
 		if [ -z "$3" ]; then
 			printf -- '%s\n' "$(time_format) $1 - Error!!! Full command for debug: $2" >> "$log_file_name"
 			mail -s "ERROR!!! $(hostname -f) - $BASH_SOURCE" "$admin_email" < "$log_file_name"
